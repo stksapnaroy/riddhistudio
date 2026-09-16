@@ -1,0 +1,9 @@
+{
+  "name": "riddhi-creative-studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  }
+}
