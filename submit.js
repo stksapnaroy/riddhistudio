@@ -17,10 +17,19 @@ document.addEventListener('DOMContentLoaded', () => {
         body: formData
       });
 
-      const result = await response.json();
+      const text = await response.text();
+      let result = {};
+
+      if (text) {
+        try {
+          result = JSON.parse(text);
+        } catch {
+          result = { success: false, message: 'Server error. Please try again later.' };
+        }
+      }
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to send enquiry.');
+        throw new Error(result.message || text || 'Failed to send enquiry.');
       }
 
       statusBox.classList.add('success');

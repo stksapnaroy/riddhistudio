@@ -1,33 +1,61 @@
+const sendJson = (res, statusCode, payload) => {
+  if (typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(statusCode).json(payload);
+  }
+
+  res.statusCode = statusCode;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(payload));
+};
+
+const parseFormData = async (req) => {
+  if (typeof req.formData === 'function') {
+    return await req.formData();
+  }
+
+  if (req.body instanceof FormData) {
+    return req.body;
+  }
+
+  if (typeof req.body === 'string' || req.body instanceof Buffer) {
+    return await new Response(req.body).formData();
+  }
+
+  return new FormData();
+};
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
+  const method = req.method || 'GET';
+
+  if (method !== 'POST') {
+    return sendJson(res, 405, { success: false, message: 'Method not allowed' });
   }
 
   const gmailUser = process.env.GMAIL_USER || 'riddhicreativestudio@gmail.com';
   const gmailPassword = process.env.GMAIL_APP_PASSWORD || 'Riddhi@0206';
 
   if (!gmailPassword) {
-    return res.status(500).json({
+    return sendJson(res, 500, {
       success: false,
       message: 'Email password is not configured in Vercel environment variables.'
     });
   }
 
-  const formData = await req.formData();
-  const name = (formData.get('name') || '').toString().trim();
-  const email = (formData.get('email') || '').toString().trim();
-  const phone = (formData.get('phone') || '').toString().trim();
-  const company = (formData.get('company') || '').toString().trim();
-  const service = (formData.get('service') || '').toString().trim();
-  const quantity = (formData.get('quantity') || '').toString().trim();
-  const need = (formData.get('need') || '').toString().trim();
-  const file = formData.get('upload');
-
-  if (!name || !email || !phone || !need) {
-    return res.status(400).json({ success: false, message: 'Please fill required fields.' });
-  }
-
   try {
+    const formData = await parseFormData(req);
+    const name = (formData.get('name') || '').toString().trim();
+    const email = (formData.get('email') || '').toString().trim();
+    const phone = (formData.get('phone') || '').toString().trim();
+    const company = (formData.get('company') || '').toString().trim();
+    const service = (formData.get('service') || '').toString().trim();
+    const quantity = (formData.get('quantity') || '').toString().trim();
+    const need = (formData.get('need') || '').toString().trim();
+    const file = formData.get('upload');
+
+    if (!name || !email || !phone || !need) {
+      return sendJson(res, 400, { success: false, message: 'Please fill required fields.' });
+    }
+
     const nodemailer = (await import('nodemailer')).default;
 
     const transporter = nodemailer.createTransport({
@@ -67,9 +95,12 @@ export default async function handler(req, res) {
     };
 
     await transporter.sendMail(mailOptions);
-    return res.status(200).json({ success: true, message: 'Your enquiry has been sent successfully.' });
+    return sendJson(res, 200, { success: true, message: 'Your enquiry has been sent successfully.' });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, message: 'Failed to send message. Please try again later.' });
+    return sendJson(res, 500, {
+      success: false,
+      message: 'Failed to send message. Please try again later.'
+    });
   }
 }
