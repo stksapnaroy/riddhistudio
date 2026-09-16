@@ -47,7 +47,7 @@ export default async function handler(req, res) {
   }
 
   const gmailUser = process.env.GMAIL_USER || 'riddhicreativestudio@gmail.com';
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+  const gmailPassword = (process.env.GMAIL_APP_PASSWORD || '').replace(/\s/g, '');
 
   if (!gmailPassword) {
     return sendJson(res, 500, {
@@ -104,6 +104,14 @@ export default async function handler(req, res) {
     return sendJson(res, 200, { success: true, message: 'Your enquiry has been sent successfully.' });
   } catch (error) {
     console.error(error);
+
+    if (error && (error.code === 'EAUTH' || error.responseCode === 535)) {
+      return sendJson(res, 500, {
+        success: false,
+        message: 'Gmail authentication failed. Use a 16-character Gmail App Password in GMAIL_APP_PASSWORD.'
+      });
+    }
+
     return sendJson(res, 500, {
       success: false,
       message: 'Failed to send message. Please try again later.'
