@@ -8,20 +8,35 @@ const sendJson = (res, statusCode, payload) => {
   res.end(JSON.stringify(payload));
 };
 
-const parseFormData = async (req) => {
-  if (typeof req.formData === 'function') {
-    return await req.formData();
+export const config = {
+  api: {
+    bodyParser: false
   }
+};
 
-  if (req.body instanceof FormData) {
-    return req.body;
-  }
+const parseMultipartForm = async (req) => {
+  const { formidable } = await import('formidable');
+  const form = formidable({ multiples: false });
+  const [fields, files] = await form.parse(req);
 
-  if (typeof req.body === 'string' || req.body instanceof Buffer) {
-    return await new Response(req.body).formData();
-  }
+  const getField = (name) => {
+    const value = fields[name];
+    return Array.isArray(value) ? value[0] || '' : value || '';
+  };
 
-  return new FormData();
+  const uploadedFile = files.upload;
+  const file = Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile;
+
+  return {
+    name: getField('name').toString().trim(),
+    email: getField('email').toString().trim(),
+    phone: getField('phone').toString().trim(),
+    company: getField('company').toString().trim(),
+    service: getField('service').toString().trim(),
+    quantity: getField('quantity').toString().trim(),
+    need: getField('need').toString().trim(),
+    file
+  };
 };
 
 export default async function handler(req, res) {
@@ -32,7 +47,7 @@ export default async function handler(req, res) {
   }
 
   const gmailUser = process.env.GMAIL_USER || 'riddhicreativestudio@gmail.com';
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD || 'Riddhi@0206';
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
 
   if (!gmailPassword) {
     return sendJson(res, 500, {
@@ -42,15 +57,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const formData = await parseFormData(req);
-    const name = (formData.get('name') || '').toString().trim();
-    const email = (formData.get('email') || '').toString().trim();
-    const phone = (formData.get('phone') || '').toString().trim();
-    const company = (formData.get('company') || '').toString().trim();
-    const service = (formData.get('service') || '').toString().trim();
-    const quantity = (formData.get('quantity') || '').toString().trim();
-    const need = (formData.get('need') || '').toString().trim();
-    const file = formData.get('upload');
+    const { name, email, phone, company, service, quantity, need, file } = await parseMultipartForm(req);
 
     if (!name || !email || !phone || !need) {
       return sendJson(res, 400, { success: false, message: 'Please fill required fields.' });
@@ -67,11 +74,10 @@ export default async function handler(req, res) {
     });
 
     const attachments = [];
-    if (file && typeof file.arrayBuffer === 'function' && file.name) {
-      const buffer = Buffer.from(await file.arrayBuffer());
+    if (file && file.filepath && file.originalFilename) {
       attachments.push({
-        filename: file.name,
-        content: buffer
+        filename: file.originalFilename,
+        path: file.filepath
       });
     }
 
