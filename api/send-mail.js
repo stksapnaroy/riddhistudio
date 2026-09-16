@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   const gmailUser = process.env.GMAIL_USER || 'riddhicreativestudio@gmail.com';
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD || 'Riddhi@0206';
 
   if (!gmailPassword) {
     return res.status(500).json({
